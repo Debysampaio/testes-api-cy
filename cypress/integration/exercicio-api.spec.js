@@ -1,12 +1,14 @@
 /// <reference types="cypress" />
 
-/// <reference types="cypress" />
+import contrato from '../contracts/usuarios.contract'
+var faker = require('faker');
 
 describe('Testes da Funcionalidade Usuários', () => {
-     
 
      it('Deve validar contrato de usuários', () => {
-
+          cy.request('usuarios').then((response) => {
+               return contrato.validateAsync(response.body)
+          })
      });
 
      it('Deve listar usuários cadastrados', () => {
@@ -14,50 +16,61 @@ describe('Testes da Funcionalidade Usuários', () => {
                method: 'GET',
                url: 'usuarios'
           }).then((response) => {
-               expect(response.body.usuarios[0].nome).to.equal('Fulano da Silva')
                expect(response.status).to.equal(200)
                expect(response.body).to.have.property('usuarios')
-               expect(response.duration).to.be.lessThan(15)
           })
      });
 
      it('Deve cadastrar um usuário com sucesso', () => {
-          let usuarios = `Produto EBAC ${Math.floor(Math.random() * 100000000)}`
-          cy.request({
-               method: 'POST',
-               url: 'usuarios',
-               body:
-               {
-                    "nome": usuarios,
-                    //TODO
-                    "email": "produtonovo7@qa.com.br",
-                    "password": "teste",
-                    "administrador": "true"
-               },
-
-          }).then((response) => {
-               expect(response.status).to.equal(201)
-               expect(response.body.message).to.equal('Cadastro realizado com sucesso')
-
-          })
+          let nome = faker.name.firstName()
+          let email = faker.internet.email()
+          let senha = faker.internet.password()
+          cy.cadastrarUsuario(nome, email, senha, 'true')
+               .then((response) => {
+                    expect(response.status).to.equal(201)
+                    expect(response.body.message).to.equal('Cadastro realizado com sucesso')
+               })
      });
 
-     it.only('Deve validar um usuário com email inválido', () => {
-          cy.cadastrarProduto('nome', 'email', 'senha')
-
-          .then((response) => {
-               expect(response.status).to.equal(400)
-               expect(response.body.message).to.equal('Este email já está sendo usado')
-
-
-          })
+     it('Deve validar um usuário com email inválido', () => {
+          cy.cadastrarUsuario("Fulano da Silva", "beltrano@qa.com.br", "teste", "true").
+               then((response) => {
+                    expect(response.status).to.equal(400);
+                    expect(response.body.message).to.equal('Este email já está sendo usado')
+               })
      });
 
      it('Deve editar um usuário previamente cadastrado', () => {
-          //TODO: 
+          cy.request('usuarios').then((response) => {
+               let id = response.body.usuarios[0]._id
+               cy.request({
+                    url: `usuarios/${id}`,
+                    method: 'PUT',
+                    body: {
+                         "nome": "Fulano da Silva editado",
+                         "email": "beltrano.editado@qa.com.br",
+                         "password": "teste editado",
+                         "administrador": "true"
+                    }
+               }).then((response) => {
+                    expect(response.status).to.equal(200);
+                    expect(response.body.message).to.equal('Registro alterado com sucesso')
+               })
+          })
      });
 
      it('Deve deletar um usuário previamente cadastrado', () => {
-          //TODO: 
+          cy.request('usuarios').then((response) => {
+               let id = response.body.usuarios[1]._id
+               cy.request({
+                    url: `usuarios/${id}`,
+                    method: 'DELETE'
+               }).then((response) => {
+                    expect(response.status).to.equal(200);
+                    expect(response.body.message).to.equal('Registro excluído com sucesso')
+               })
+          })
      });
+
+
 });
